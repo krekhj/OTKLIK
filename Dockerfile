@@ -37,10 +37,13 @@ COPY --from=server /app/server/package.json ./
 COPY --from=server /app/server/node_modules ./node_modules
 COPY --from=server /app/server/dist ./dist
 COPY --from=client /app/client/dist /app/client/dist
-COPY --chmod=755 docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+# без COPY --chmod: тот требует BuildKit, а старый docker-compose v1 собирает без него
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 # /data — том с сессиями; pwuser — непривилегированный пользователь образа
-RUN mkdir -p /data/sessions /data/debug \
+RUN chmod 755 /usr/local/bin/entrypoint.sh \
+    && sed -i 's/\r$//' /usr/local/bin/entrypoint.sh \
+    && mkdir -p /data/sessions /data/debug \
     && chown -R pwuser:pwuser /data \
     && chmod 700 /data/sessions
 USER pwuser
