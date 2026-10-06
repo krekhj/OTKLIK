@@ -10,21 +10,24 @@ services:
     env_file: .env
     volumes:
       - otklik-data:/data
-    expose:
-      - "3000"
-    # без Caddy, за своим прокси на этой же машине — раскомментируй:
-    # ports:
-    #   - "127.0.0.1:3000:3000"
+    # Внутри контейнера сервер слушает 3000 — это не мешает занятому 3000 на
+    # хосте. На хост пробрасываем только на localhost: снаружи сайт доступен
+    # через reverse proxy (nginx на VPS — см. docker/nginx.conf.example).
+    ports:
+      - "127.0.0.1:${APP_PORT:-3100}:3000"
 
+  # Свой HTTPS-прокси — только если на VPS свободны 80/443:
+  #   docker compose --profile caddy up -d
   caddy:
     image: caddy:2
+    profiles: ["caddy"]
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
       - "443:443/udp"
     environment:
-      DOMAIN: ${DOMAIN:?задай DOMAIN в .env}
+      DOMAIN: ${DOMAIN:-}
     volumes:
       - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data

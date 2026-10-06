@@ -17,31 +17,52 @@ cd client && npm install && npm run dev                           # Vite, /api �
 
 ## Деплой на VPS (Docker)
 
-Нужны: VPS с Docker и Compose, домен с A-записью на IP сервера, открытые порты 80 и 443.
+Нужны VPS с Docker и Compose и домен (поддомен) с A-записью на IP сервера.
+Контейнер слушает только `127.0.0.1:${APP_PORT}` (по умолчанию 3100) — снаружи
+сайт открывается через reverse proxy, который уже стоит на VPS.
 
 ```bash
 git clone <repo> otklik && cd otklik
 cp .env.example .env
-# заполни DOMAIN, AUTH_USER и AUTH_PASSWORD (длинный случайный: openssl rand -base64 24)
+# AUTH_USER, AUTH_PASSWORD (длинный случайный: openssl rand -base64 24),
+# APP_PORT — любой свободный порт на хосте (проверить: ss -ltn | grep :3100)
 docker compose up -d --build
-docker compose logs -f otklik
+docker compose logs -f otklik        # ждём «auth on · headless false»
+curl -s 127.0.0.1:3100/healthz       # {"ok":true}
 ```
 
-Открой `https://<DOMAIN>`: браузер спросит логин и пароль из `AUTH_USER`/`AUTH_PASSWORD`.
+### nginx на VPS (порты 80/443 заняты им)
 
-Что внутри:
+Готовый конфиг — [`docker/nginx.conf.example`](docker/nginx.conf.example):
+
+```bash
+sudo cp docker/nginx.conf.example /etc/nginx/sites-available/otklik
+sudoedit /etc/nginx/sites-available/otklik      # домен; порт, если менял APP_PORT
+sudo ln -s /etc/nginx/sites-available/otklik /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d otklik.example.com      # HTTPS
+```
+
+Важно для `/api/run/events` (живой прогресс, SSE): `proxy_buffering off` и
+длинный `proxy_read_timeout` — в примере уже есть. Другой прокси (Traefik,
+Caddy на хосте, Nginx Proxy Manager) — проксируй домен на `127.0.0.1:3100` и
+отключи буферизацию для `/api/run/events`.
+
+### Если 80/443 свободны — встроенный Caddy
+
+В `.env` задай `DOMAIN`, затем `docker compose --profile caddy up -d --build`:
+Caddy сам получит сертификат Let's Encrypt.
+
+### Что внутри
 
 | Сервис | Что делает |
 |---|---|
 | `otklik` | образ Playwright: Node + Chromium. Сервер отдаёт и API, и собранный фронт. Chromium запускается **с окном** внутри виртуального дисплея Xvfb — без окна hh показывает другую проверку, и капча не доходит до страницы |
-| `caddy` | HTTPS с автоматическим сертификатом Let's Encrypt и прокси на `otklik:3000` |
+| `caddy` | необязательный (профиль `caddy`): HTTPS и прокси на `otklik:3000` |
 
-Данные:
-
-- том `otklik-data` → `/data/sessions` (сессии hh, зашифрованы паролем пользователя) и
-  `/data/debug` (скриншоты страницы, на которой сломался вход:
-  `docker compose cp otklik:/data/debug ./debug`);
-- тома `caddy-data`/`caddy-config` — сертификаты.
+Данные — том `otklik-data`: `/data/sessions` (сессии hh, зашифрованы) и
+`/data/debug` (скриншоты страницы, на которой сломался вход:
+`docker compose cp otklik:/data/debug ./debug`).
 
 Обновление: `git pull && docker compose up -d --build`.
 
@@ -49,7 +70,7 @@ docker compose logs -f otklik
 
 - сервер не стартует, если слушает сеть без `AUTH_USER`/`AUTH_PASSWORD` или пароль
   остался заглушкой / короче 12 символов;
-- наружу открыт только Caddy (80/443), `otklik` доступен лишь внутри сети compose;
+- порт контейнера проброшен только на `127.0.0.1` — напрямую из интернета не виден;
 - контейнер бота работает от непривилегированного `pwuser`.
 
 Учти:
@@ -58,7 +79,3 @@ docker compose logs -f otklik
   ограничивать. Лучше VPS в России;
 - браузер с окном ест память: закладывай от 1 ГБ RAM на контейнер (`shm_size: 1gb` уже задан);
 - бот один на сервер: одновременно идёт только один прогон.
-
-Без Caddy (свой nginx/traefik на хосте): убери сервис `caddy` и раскомментируй
-`ports: ["127.0.0.1:3000:3000"]` у `otklik`. Для `/api/run/events` (SSE) в прокси
-отключи буферизацию (`proxy_buffering off` в nginx).

@@ -1,0 +1,38 @@
+# nginx на VPS → OTKLIK в docker (127.0.0.1:APP_PORT, по умолчанию 3100).
+#
+# 1. sudo cp docker/nginx.conf.example /etc/nginx/sites-available/otklik
+#    и замени otklik.example.com на свой домен (и порт, если менял APP_PORT)
+# 2. sudo ln -s /etc/nginx/sites-available/otklik /etc/nginx/sites-enabled/
+# 3. sudo nginx -t && sudo systemctl reload nginx
+# 4. HTTPS: sudo certbot --nginx -d otklik.example.com
+#    (certbot сам допишет listen 443 и сертификаты в этот файл)
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name otklik.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:3100;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # заголовок Basic-авторизации передаётся как есть
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # живой прогресс (SSE): без буферизации и с долгим таймаутом,
+    # иначе обновления приходят пачками или соединение рвётся через 60 с
+    location = /api/run/events {
+        proxy_pass http://127.0.0.1:3100;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+        proxy_set_header Authorization $http_authorization;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 1h;
+    }
+}
