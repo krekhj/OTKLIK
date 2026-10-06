@@ -1,0 +1,22 @@
+.select {
+  flex: 1;
+  min-width: 0;
+  height: 46px;
+  padding: 0 28px 0 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font: 400 15px/22px var(--font-mono);
+  appearance: none;
+  cursor: pointer;
+}
+.select option {
+  background: var(--surface-raised);
+  color: var(--ink);
+}
+.chevron {
+  margin-left: -20px;
+  color: var(--ink-muted);
+  pointer-events: none;
+}

@@ -1,0 +1,50 @@
+.head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.label {
+  color: var(--ink-muted);
+  transition: color var(--ease);
+}
+.wrap:focus-within .label {
+  color: var(--accent);
+}
+.aside {
+  color: var(--ink-faint);
+}
+
+.area {
+  display: block;
+  width: 100%;
+  min-height: 168px;
+  resize: vertical;
+  padding: 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sharp);
+  background: var(--surface-raised);
+  color: var(--ink);
+  font: 400 13px/20px var(--font-mono);
+  caret-color: var(--accent);
+  outline: none;
+  transition: border-color var(--ease);
+}
+.area::placeholder {
+  color: var(--ink-faint);
+}
+.area:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 8px;
+  color: var(--ink-faint);
+}
+.counter {
+  flex: none;
+  white-space: nowrap;
+}

@@ -1,0 +1,59 @@
+.filters {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.count {
+  color: var(--ink-faint);
+}
+.reset {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-muted);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.reset:hover {
+  color: var(--accent);
+}
+.salaryRow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.unit {
+  color: var(--ink-faint);
+  font-size: 15px;
+}
+.others {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.legend {
+  padding: 0;
+  margin-bottom: 12px;
+  color: var(--ink-muted);
+}
+.summary {
+  margin-top: 12px;
+}
+.group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}

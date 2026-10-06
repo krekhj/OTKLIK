@@ -1,0 +1,21 @@
+.squares {
+  display: inline-flex;
+  gap: 6px;
+}
+.sq {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  animation: blink 1s infinite;
+}
+.sq:nth-child(2) { animation-delay: 0.2s; }
+.sq:nth-child(3) { animation-delay: 0.4s; }
+
+.caption {
+  margin: 24px 0 40px;
+  text-align: center;
+  color: var(--ink-faint);
+}
+.error {
+  color: var(--danger);
+}

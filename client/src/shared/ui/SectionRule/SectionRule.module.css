@@ -1,0 +1,15 @@
+.rule {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.index {
+  color: var(--accent);
+  font-size: 11px;
+  line-height: 16px;
+}
+.line {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}

@@ -1,0 +1,32 @@
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 32px;
+  padding: 32px var(--gutter);
+  border-bottom: 1px solid var(--line);
+}
+.logo {
+  text-decoration: none;
+}
+.logo:hover {
+  color: var(--accent);
+}
+.nav {
+  display: flex;
+  gap: 40px;
+}
+.nav a {
+  color: var(--ink-muted);
+  text-decoration: none;
+  transition: color var(--ease);
+}
+.nav a:hover {
+  color: var(--ink);
+}
+
+@media (max-width: 720px) {
+  .header { padding: 24px var(--gutter); }
+  .nav { display: none; }
+}

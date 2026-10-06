@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- графитовая плашка -->
+  <rect width="64" height="64" rx="14" fill="#141413"/>
+  <!-- оранжевый блок с точечной сеткой, как в hero -->
+  <path d="M26 10h20a8 8 0 0 1 8 8v36H26z" fill="#d97757"/>
+  <g fill="#141413">
+    <rect x="31" y="17" width="4" height="4"/>
+    <rect x="39" y="17" width="4" height="4"/>
+    <rect x="47" y="17" width="4" height="4" opacity=".25"/>
+    <rect x="31" y="25" width="4" height="4" opacity=".25"/>
+    <rect x="39" y="25" width="4" height="4"/>
+    <rect x="47" y="25" width="4" height="4"/>
+    <rect x="31" y="33" width="4" height="4"/>
+    <rect x="39" y="33" width="4" height="4" opacity=".25"/>
+    <rect x="47" y="33" width="4" height="4"/>
+  </g>
+  <!-- кольцо в углу блока -->
+  <circle cx="44" cy="46" r="4.5" fill="none" stroke="#141413" stroke-width="2"/>
+  <!-- колонка фигур слева -->
+  <rect x="10" y="14" width="12" height="12" rx="1.5" fill="#faf9f5"/>
+  <rect x="10" y="30" width="12" height="7" rx="1.5" fill="#7a6352"/>
+  <rect x="14" y="41" width="8" height="8" rx="1.5" fill="#c4673f"/>
+</svg>

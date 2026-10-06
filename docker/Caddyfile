@@ -1,0 +1,5 @@
+# HTTPS с автоматическим сертификатом Let's Encrypt для домена из .env.
+# SSE (/api/run/events) Caddy проксирует без буферизации сам.
+{$DOMAIN} {
+	reverse_proxy otklik:3000
+}

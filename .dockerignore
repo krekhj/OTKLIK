@@ -1,0 +1,13 @@
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+server/sessions
+server/debug
+server/state.json
+.git
+.vscode
+.idea
+**/.DS_Store

@@ -1,0 +1,39 @@
+services:
+  otklik:
+    build: .
+    image: otklik:latest
+    restart: unless-stopped
+    # tini: пробрасывает SIGTERM в node и подбирает процесс Xvfb
+    init: true
+    # Chromium падает с дефолтными 64 МБ /dev/shm
+    shm_size: 1gb
+    env_file: .env
+    volumes:
+      - otklik-data:/data
+    expose:
+      - "3000"
+    # без Caddy, за своим прокси на этой же машине — раскомментируй:
+    # ports:
+    #   - "127.0.0.1:3000:3000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?задай DOMAIN в .env}
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      otklik:
+        condition: service_healthy
+
+volumes:
+  otklik-data:
+  caddy-data:
+  caddy-config:

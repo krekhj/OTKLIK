@@ -1,0 +1,21 @@
+# зависимости и сборка
+node_modules/
+dist/
+dist-ssr/
+
+# секреты: пароли, auth, домен
+.env
+.env.*
+!.env.example
+
+# сессии hh.ru и отладочные дампы страниц
+server/sessions/
+server/debug/
+server/state.json
+
+# логи и мусор редакторов
+*.log
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json

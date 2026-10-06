@@ -1,0 +1,12 @@
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 32px var(--gutter);
+  border-top: 1px solid var(--line);
+  color: var(--ink-faint);
+}
+@media (max-width: 720px) {
+  .footer { padding: 24px var(--gutter); }
+}

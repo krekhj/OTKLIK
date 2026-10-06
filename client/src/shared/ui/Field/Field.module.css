@@ -1,0 +1,73 @@
+.field {
+  display: flex;
+  flex-direction: column;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.label {
+  color: var(--ink-muted);
+  transition: color var(--ease);
+}
+.field:focus-within .label {
+  color: var(--accent);
+}
+
+.aside {
+  color: var(--ink-faint);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  border-bottom: 1px solid var(--line);
+  transition: border-color var(--ease), box-shadow var(--ease);
+}
+.row:hover {
+  border-bottom-color: var(--line-strong);
+}
+.field:focus-within .row {
+  border-bottom-color: var(--accent);
+  box-shadow: 0 1px 0 0 var(--accent);
+}
+
+.hint {
+  margin-top: 8px;
+  color: var(--ink-faint);
+}
+
+.error .label,
+.error .hint {
+  color: var(--danger);
+}
+.error .row,
+.field.error:focus-within .row {
+  border-bottom-color: var(--danger);
+  box-shadow: 0 1px 0 0 var(--danger);
+}
+
+/* общий стиль поля ввода внутри .row */
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font: 400 15px/22px var(--font-mono);
+  caret-color: var(--accent);
+}
+.input::placeholder {
+  color: var(--ink-faint);
+}
+.input:focus-visible {
+  outline: none;
+}

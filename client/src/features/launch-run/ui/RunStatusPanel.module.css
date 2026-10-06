@@ -1,0 +1,71 @@
+.panel {
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sharp);
+  background: var(--surface-raised);
+}
+.panel.failed {
+  border-color: var(--danger);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 40px;
+  margin-bottom: 20px;
+}
+.title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.track {
+  position: relative;
+  height: 2px;
+  background: var(--line);
+}
+.bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  transition: width 300ms ease-out;
+}
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 12px;
+  color: var(--ink-muted);
+}
+.errorText {
+  margin-top: 12px;
+  color: var(--danger);
+}
+
+.log {
+  margin-top: 16px;
+  color: var(--ink-faint);
+}
+.log summary {
+  cursor: pointer;
+  width: fit-content;
+}
+.log summary:hover {
+  color: var(--ink);
+}
+.log ol {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--line);
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,91 @@
+/* Токены дизайн-системы OTKLIK (тема Graphite) */
+:root {
+  --bg: #141413;
+  --surface-raised: #1c1b19;
+  --ink: #faf9f5;
+  --ink-muted: #b0aea5;
+  --ink-faint: #8a887f;
+  --accent: #d97757;
+  --accent-hover: #e58a6c;
+  --accent-pressed: #c4673f;
+  --on-accent: #141413;
+  --line: #3d2b1f;
+  --line-strong: #7a6352;
+  --success: #7fb069;
+  --danger: #ff6b6b;
+
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --radius-sharp: 2px;
+  --radius-pill: 999px;
+  --ease: 160ms ease-out;
+
+  --gutter: 56px;
+
+  color-scheme: dark;
+}
+
+@media (max-width: 720px) {
+  :root { --gutter: 24px; }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, p {
+  margin: 0;
+}
+
+a {
+  color: var(--ink-muted);
+}
+a:hover {
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Типографика из tokens.json */
+.t-eyebrow { font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: 0.24em; }
+.t-label { font-size: 11px; line-height: 16px; font-weight: 400; letter-spacing: 0.2em; }
+.t-caption { font-size: 11px; line-height: 16px; font-weight: 400; letter-spacing: 0.06em; }
+.t-body { font-size: 13px; line-height: 20px; font-weight: 400; }
+.t-wordmark { font-size: 11px; line-height: 16px; font-weight: 700; letter-spacing: 0.28em; color: var(--accent); }
+
+.tabular { font-variant-numeric: tabular-nums; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

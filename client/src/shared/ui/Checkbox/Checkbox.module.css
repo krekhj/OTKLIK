@@ -1,0 +1,49 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color var(--ease);
+}
+.row:hover {
+  color: var(--ink);
+}
+.box {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  display: inline-grid;
+  place-content: center;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sharp);
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color var(--ease), background var(--ease);
+}
+.box::after {
+  content: "";
+  width: 9px;
+  height: 5px;
+  margin-top: -2px;
+  border-left: 1.5px solid var(--on-accent);
+  border-bottom: 1.5px solid var(--on-accent);
+  transform: rotate(-45deg) scale(0);
+  transition: transform var(--ease);
+}
+.box:checked {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.box:checked::after {
+  transform: rotate(-45deg) scale(1);
+}
+.box:checked ~ span {
+  color: var(--ink);
+}
