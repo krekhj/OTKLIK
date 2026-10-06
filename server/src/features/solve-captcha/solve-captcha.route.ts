@@ -1,7 +1,8 @@
 import type { CaptchaAnswer } from "../../hh-bot/bot.types.js";
 import { HttpError, readJson, sendJson } from "../../shared/http/http.json.js";
 import type { Route } from "../../shared/http/http.types.js";
-import { runStore } from "../../shared/run/run.store.js";
+import { clientId } from "../../shared/http/http.client.js";
+import { runs } from "../../shared/run/run.registry.js";
 
 const MAX_TEXT = 50;
 
@@ -20,8 +21,9 @@ export const solveCaptchaRoute: Route = {
   method: "POST",
   path: "/api/run/captcha",
   async handler(req, res) {
+    const store = runs.of(clientId(req));
     const answer = validate(await readJson(req));
-    if (!runStore.answerCaptcha(answer)) throw new HttpError(409, "no captcha is waiting");
-    sendJson(res, 202, runStore.snapshot);
+    if (!store.answerCaptcha(answer)) throw new HttpError(409, "no captcha is waiting");
+    sendJson(res, 202, store.snapshot);
   },
 };

@@ -1,5 +1,6 @@
-// Состояние единственного прогона бота: браузер один, прогон тоже один.
-// Подписчики (SSE) получают снимок при каждом изменении.
+// Состояние прогона одного клиента (браузера). Свой экземпляр у каждого —
+// их раздаёт run.registry.ts по cookie клиента. Подписчики (SSE) получают
+// снимок при каждом изменении.
 import { EventEmitter } from "node:events";
 import type {
   CaptchaAnswer,
@@ -53,9 +54,13 @@ const initial = (): RunSnapshot => ({
   finishedAt: null,
 });
 
-class RunStore {
+export class RunStore {
   private state = initial();
   private controller: AbortController | null = null;
+  // hh-аккаунт текущего прогона: один аккаунт нельзя гонять дважды одновременно
+  private runLogin: string | null = null;
+  // для уборки: когда прогоном последний раз что-то происходило
+  lastActivity = Date.now();
   private readonly pending: Record<"captcha" | "code", ((answer: unknown) => void) | null> = {
     captcha: null,
     code: null,
@@ -70,13 +75,23 @@ class RunStore {
     return this.state.status === "running";
   }
 
+  // логин hh, под которым идёт прогон (null — не идёт)
+  get login(): string | null {
+    return this.isRunning ? this.runLogin : null;
+  }
+
+  get subscribers(): number {
+    return this.events.listenerCount("change");
+  }
+
   subscribe(listener: (snapshot: RunSnapshot) => void): () => void {
     this.events.on("change", listener);
     return () => this.events.off("change", listener);
   }
 
-  start(count: number): AbortSignal {
+  start(count: number, login: string): AbortSignal {
     this.controller = new AbortController();
+    this.runLogin = login.trim().toLowerCase();
     this.set({
       ...initial(),
       status: "running",
@@ -201,9 +216,11 @@ class RunStore {
   }
 
   private set(patch: Partial<RunSnapshot>) {
+    this.lastActivity = Date.now();
     this.state = { ...this.state, ...patch, version: this.state.version + 1 };
     this.events.emit("change", this.state);
   }
 }
 
-export const runStore = new RunStore();
+// снимок для клиента, у которого прогона ещё не было
+export const idleSnapshot = (): RunSnapshot => initial();

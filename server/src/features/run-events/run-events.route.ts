@@ -1,7 +1,9 @@
 // Server-Sent Events: живой прогресс прогона без опроса.
 import type { ServerResponse } from "node:http";
 import type { Route } from "../../shared/http/http.types.js";
-import { runStore, type RunSnapshot } from "../../shared/run/run.store.js";
+import { clientId } from "../../shared/http/http.client.js";
+import { runs } from "../../shared/run/run.registry.js";
+import type { RunSnapshot } from "../../shared/run/run.store.js";
 
 const HEARTBEAT_MS = 25_000;
 
@@ -18,9 +20,10 @@ export const runEventsRoute: Route = {
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
     });
-    send(res, runStore.snapshot);
+    const store = runs.of(clientId(req));
+    send(res, store.snapshot);
 
-    const unsubscribe = runStore.subscribe((snapshot) => send(res, snapshot));
+    const unsubscribe = store.subscribe((snapshot) => send(res, snapshot));
     // комментарий раз в 25 с не даёт прокси закрыть «молчащее» соединение
     const heartbeat = setInterval(() => res.write(": ping\n\n"), HEARTBEAT_MS);
 

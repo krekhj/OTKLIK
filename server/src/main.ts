@@ -1,6 +1,6 @@
 import { createApp } from "./app.js";
 import { config, isLoopback } from "./config.js";
-import { runStore } from "./shared/run/run.store.js";
+import { runs } from "./shared/run/run.registry.js";
 
 // без авторизации наружу не открываемся: API принимает пароль от hh.ru
 if (!config.auth && !isLoopback(config.host)) {
@@ -28,7 +28,7 @@ server.listen(config.port, config.host, () => {
 // закрываем браузер бота при остановке сервера
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {
-    runStore.stop();
+    runs.stopAll();
     server.close();
     server.closeAllConnections();
     setTimeout(() => process.exit(0), 1_000).unref();

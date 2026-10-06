@@ -12,6 +12,8 @@ export const config = {
   debugDir: process.env.DEBUG_DIR ?? `${root}debug`,
   // собранный фронт отдаётся тем же сервером, если он есть
   clientDir: process.env.CLIENT_DIR ?? `${root}../client/dist`,
+  // сколько прогонов (каждый — свой Chromium) может идти одновременно
+  maxRuns: Math.max(1, Number(process.env.MAX_RUNS) || 2),
   // Basic-авторизация на всё, кроме /healthz. Обязательна, если сервер
   // слушает не только localhost: API принимает пароль от hh.ru.
   auth:

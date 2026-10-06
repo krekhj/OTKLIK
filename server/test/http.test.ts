@@ -13,8 +13,10 @@ writeFileSync(join(clientDir, "assets", "app-abc123.js"), "console.log(1)");
 process.env.CLIENT_DIR = clientDir;
 process.env.AUTH_USER = "admin";
 process.env.AUTH_PASSWORD = "correct horse battery";
+process.env.MAX_RUNS = "2";
 
 const { createApp } = await import("../src/app.js");
+const { runs } = await import("../src/shared/run/run.registry.js");
 const server = createApp();
 let base = "";
 const auth = { Authorization: `Basic ${Buffer.from("admin:correct horse battery").toString("base64")}` };
@@ -137,5 +139,87 @@ describe("статика", () => {
     const traversal = await get("/..%2f..%2fetc%2fpasswd");
     assert.doesNotMatch(await traversal.text(), /root:/);
     assert.equal((await get("/%E0%A4%A")).status, 400);
+  });
+});
+
+// новый клиент: первый запрос выдаёт cookie, дальше ходим с ним
+async function newClient() {
+  const res = await get("/api/run");
+  const setCookie = res.headers.get("set-cookie") ?? "";
+  const cookie = setCookie.split(";")[0]!;
+  const id = cookie.split("=")[1]!;
+  const as = (path: string, init: RequestInit = {}) => get(path, { ...init, headers: { Cookie: cookie, ...init.headers } });
+  const postAs = (path: string, body?: unknown) =>
+    as(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: body === undefined ? null : JSON.stringify(body) });
+  return { id, cookie, setCookie, get: as, post: postAs };
+}
+
+const validStart = (login: string) => ({ login, authMode: "password", password: "x", keywords: ["React"], count: 1 });
+
+describe("изоляция клиентов", () => {
+  it("cookie: HttpOnly, SameSite=Strict, без Secure по http; с Secure за HTTPS-прокси", async () => {
+    const plain = await newClient();
+    assert.match(plain.setCookie, /^otklik_client=[A-Za-z0-9_-]{32,}; Path=\/; Max-Age=\d+; HttpOnly; SameSite=Strict$/);
+    const behindProxy = await get("/api/run", { headers: { "X-Forwarded-Proto": "https" } });
+    assert.match(behindProxy.headers.get("set-cookie") ?? "", /; Secure$/);
+    const again = await plain.get("/api/run");
+    assert.equal(again.headers.get("set-cookie"), null, "с cookie новый id не выдаётся");
+  });
+
+  it("чужой прогон не виден и недоступен: ни статус, ни капча, ни код, ни STOP", async () => {
+    const owner = await newClient();
+    const stranger = await newClient();
+    const store = runs.of(owner.id);
+    const signal = store.start(1, "owner@mail.ru");
+    const captcha = store.solveCaptcha({ image: "data:image/png;base64,", wrong: false }, signal);
+    captcha.catch(() => {});
+
+    const mine = (await (await owner.get("/api/run")).json()) as { status: string; captcha: unknown };
+    assert.equal(mine.status, "running");
+    assert.ok(mine.captcha, "владелец видит свою капчу");
+
+    const theirs = (await (await stranger.get("/api/run")).json()) as { status: string; captcha: unknown; log: unknown[] };
+    assert.equal(theirs.status, "idle", "посторонний видит только свой пустой прогон");
+    assert.equal(theirs.captcha, null);
+    assert.equal((await stranger.post("/api/run/captcha", { action: "solve", text: "x" })).status, 409);
+    assert.equal((await stranger.post("/api/run/code", { code: "123456" })).status, 409);
+    assert.equal((await stranger.post("/api/run/stop")).status, 409);
+    assert.equal(store.isRunning, true, "прогон владельца не остановлен");
+
+    // живые обновления: постороннему приходит его снимок
+    const controller = new AbortController();
+    const sse = await stranger.get("/api/run/events", { signal: controller.signal });
+    const { value } = await sse.body!.getReader().read();
+    controller.abort();
+    assert.match(new TextDecoder().decode(value), /"status":"idle"/);
+
+    assert.equal((await owner.post("/api/run/stop")).status, 202, "владелец свой прогон остановить может");
+    store.fail("stopped");
+  });
+
+  it("один hh-аккаунт не запускается из второго браузера", async () => {
+    const first = runs.of((await newClient()).id);
+    first.start(1, "Same@Mail.ru");
+    const second = await newClient();
+    const res = await second.post("/api/run/start", validStart("same@mail.ru"));
+    assert.equal(res.status, 409);
+    assert.match(((await res.json()) as { error: string }).error, /already running/);
+    first.stop();
+    first.fail("stopped");
+  });
+
+  it("лимит одновременных прогонов: сверх MAX_RUNS — 503", async () => {
+    const a = runs.of((await newClient()).id);
+    const b = runs.of((await newClient()).id);
+    a.start(1, "limit-a@mail.ru");
+    b.start(1, "limit-b@mail.ru");
+    const third = await newClient();
+    const res = await third.post("/api/run/start", validStart("limit-c@mail.ru"));
+    assert.equal(res.status, 503);
+    assert.match(((await res.json()) as { error: string }).error, /busy/);
+    for (const s of [a, b]) {
+      s.stop();
+      s.fail("stopped");
+    }
   });
 });
