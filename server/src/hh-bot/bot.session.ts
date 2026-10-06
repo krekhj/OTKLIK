@@ -21,7 +21,7 @@ import type { BrowserContext, BrowserContextOptions } from "playwright";
 import { config } from "../config.js";
 
 type Credentials = { login: string; secret: string };
-type StorageState = Exclude<BrowserContextOptions["storageState"], string | undefined>;
+export type StorageState = Exclude<BrowserContextOptions["storageState"], string | undefined>;
 
 interface SessionFile {
   v: 1;

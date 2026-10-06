@@ -1,12 +1,12 @@
 // Точка входа бота: вход, применение фильтров и запуск цикла откликов.
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { chromium, type BrowserContext, type Locator, type Page } from "playwright";
+import { chromium, type Browser, type BrowserContext, type Locator, type Page } from "playwright";
 import { config } from "../config.js";
 import { BAD_CODE_TEXT, BAD_CREDENTIALS_TEXT, LIMITS, SELECTORS, TIMEOUTS, URLS } from "./bot.constants.js";
 import { isCaptchaShown, solveCaptcha } from "./bot.captcha.js";
 import { respondToVacancies } from "./bot.respond.js";
-import { deleteSession, loadSession, saveSession } from "./bot.session.js";
+import { deleteSession, loadSession, saveSession, type StorageState } from "./bot.session.js";
 import {
   BotError,
   type BotReporter,
@@ -345,45 +345,75 @@ async function dumpPage(page: Page, name: string): Promise<string | null> {
   }
 }
 
+// Тяжёлое, без чего отклики работают: картинки, видео, шрифты.
+// На слабом VPS их отрисовка в окне съедает больше всего времени.
+const HEAVY_RESOURCES = new Set(["image", "media", "font"]);
+
+interface Session {
+  browser: Browser;
+  ctx: BrowserContext;
+  page: Page;
+}
+
+async function openSession(headless: boolean, state?: StorageState): Promise<Session> {
+  const browser = await chromium.launch({ headless });
+  const ctx = await browser.newContext(state ? { storageState: state } : {});
+  return { browser, ctx, page: await ctx.newPage() };
+}
+
 export async function runBot(
   run: RunConfig,
   reporter: BotReporter,
   signal: AbortSignal,
 ): Promise<RunProgress> {
-  const browser = await chromium.launch({ headless: config.headless });
-  let ctx: BrowserContext | null = null;
+  let session: Session | null = null;
   let loggedIn = false;
 
   // hh обновляет cookies во время прогона — сохраняем их, чтобы сессия жила дольше
   const persist = async () => {
-    if (!ctx || !loggedIn) return;
-    await saveSession(ctx, { login: run.login, secret: run.sessionSecret }).catch((error: unknown) =>
+    if (!session || !loggedIn) return;
+    await saveSession(session.ctx, { login: run.login, secret: run.sessionSecret }).catch((error: unknown) =>
       console.warn(`⚠️ не удалось сохранить сессию: ${firstLine(error)}`),
     );
   };
+  const close = async () => {
+    const current = session;
+    session = null;
+    await current?.browser.close().catch(() => {});
+  };
 
   // STOP: закрытие браузера прерывает любое ожидание Playwright
-  const onAbort = () => void persist().finally(() => browser.close().catch(() => {}));
+  const onAbort = () => void persist().finally(close);
   signal.addEventListener("abort", onAbort, { once: true });
+  const opened = async (headless: boolean, state?: StorageState) => {
+    session = await openSession(headless, state);
+    if (signal.aborted) await close(); // STOP пришёл, пока браузер запускался
+    if (!session) throw new Error("run stopped");
+    return session;
+  };
 
   try {
-    // сохранённая сессия избавляет от входа и капчи на каждом запуске;
-    // расшифруется она только с тем же паролем или ключом устройства
+    // Окно (HEADLESS=false) нужно только для входа: без него hh не показывает капчу.
+    // Отклики идут без окна — под Xvfb на VPS отрисовка тормозит в разы.
+    // Сохранённая сессия расшифруется только с тем же паролем или ключом устройства.
     const stored = await loadSession({ login: run.login, secret: run.sessionSecret });
-    ctx = await browser.newContext(stored ? { storageState: stored } : {});
-    const page = await ctx.newPage();
-
-    reporter.stage("opening hh.ru");
-    await openPage(page, URLS.home);
-
-    if (await isLoggedIn(page)) {
-      loggedIn = true;
-    } else {
-      if (stored) {
+    if (stored) {
+      const { page } = await opened(true, stored);
+      reporter.stage("opening hh.ru");
+      await openPage(page, URLS.home);
+      loggedIn = await isLoggedIn(page);
+      if (!loggedIn) {
         // расшифровалась, но hh её не принял — протухла, больше не нужна
+        await close();
         await deleteSession(run.login);
         reporter.log("сохранённая сессия устарела — вхожу заново");
       }
+    }
+
+    if (!loggedIn) {
+      const { page, ctx } = await opened(config.headless);
+      reporter.stage("opening hh.ru");
+      await openPage(page, URLS.home);
       reporter.stage("logging in");
       try {
         await login(page, ctx, run, {
@@ -398,7 +428,18 @@ export async function runBot(
         }
         throw error;
       }
+      await persist();
+      if (!config.headless) {
+        const state = await ctx.storageState();
+        await close();
+        await opened(true, state);
+      }
     }
+
+    const { page, ctx } = session!;
+    await ctx.route("**/*", (route) =>
+      HEAVY_RESOURCES.has(route.request().resourceType()) ? route.abort() : route.fallback(),
+    );
 
     reporter.stage("opening search");
     const serpUrl = await openSearch(page, run);
@@ -413,6 +454,6 @@ export async function runBot(
   } finally {
     signal.removeEventListener("abort", onAbort);
     if (!signal.aborted) await persist();
-    await browser.close().catch(() => {});
+    await close();
   }
 }

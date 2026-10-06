@@ -98,6 +98,7 @@ async function closeAnyDialog(
 
   // Escape такие окна не закрывает — если модалка на месте, перезагружаем выдачу.
   if (!closed && (await dialog.isVisible().catch(() => false))) {
+    console.warn(`⚠️ модалка не закрылась, перезагружаю выдачу: "${text.slice(0, 60)}"`);
     await bestEffort("не удалось перезагрузить выдачу", () =>
       openPage(page, serpUrl),
     );
@@ -320,6 +321,7 @@ export async function respondToVacancies(
       if (!id) break;
       handled.add(id);
 
+      const startedAt = Date.now();
       let result: Result;
       try {
         result = await respondToOne(page, id, serpUrl, config.coverLetter);
@@ -335,7 +337,8 @@ export async function respondToVacancies(
 
       progress[result.outcome]++;
       reporter.progress({ ...progress });
-      reporter.log(`${id} — ${result.note ?? result.outcome}`);
+      const seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
+      reporter.log(`${id} — ${result.note ?? result.outcome} · ${seconds} с`);
     }
   }
 
