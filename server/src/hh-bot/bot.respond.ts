@@ -43,6 +43,41 @@ async function returnToSerp(page: Page, serpUrl: string) {
   await waitForCards(page, "карточки не появились");
 }
 
+const CLOSE_SELECTORS = [
+  SELECTORS.dialog.externalCancel,
+  SELECTORS.dialog.popupClose,
+  '[data-qa="modal-close"]',
+  '[data-qa*="modal-close"]',
+  '[data-qa$="-cancel"]',
+  '[data-qa$="-abort"]',
+  '[data-qa$="-close"]',
+  '[aria-label="Закрыть"]',
+  '[aria-label="Close"]',
+].join(", ");
+
+// Для подбора селектора, если окно не закрылось: только data-qa, aria-label
+// и надписи кнопок — личных данных в модалках отклика нет.
+async function describeButtons(scope: Locator): Promise<string> {
+  return scope
+    .locator('button, [role="button"], a')
+    .evaluateAll((els) =>
+      els
+        .slice(0, 10)
+        .map((el) =>
+          [
+            el.tagName.toLowerCase(),
+            el.getAttribute("data-qa") && `qa=${el.getAttribute("data-qa")}`,
+            el.getAttribute("aria-label") && `aria=${el.getAttribute("aria-label")}`,
+            (el.textContent ?? "").trim().slice(0, 30),
+          ]
+            .filter(Boolean)
+            .join(" "),
+        )
+        .join(" | "),
+    )
+    .catch(() => "не удалось прочитать");
+}
+
 // Закрывает любую модалку и возвращает её текст для лога (null — модалки нет).
 // По модалке не кликаем: в «Вакансии с прямым откликом» в центре окна
 // основная кнопка, которая уводит на сайт работодателя.
@@ -60,31 +95,20 @@ async function closeAnyDialog(
 
   // Нужна именно кнопка отмены, а не подтверждение: у разных окон она
   // называется по-разному, поэтому ищем по data-qa, затем по тексту.
-  const byQa = dialog
-    .locator(
-      [
-        SELECTORS.dialog.externalCancel,
-        SELECTORS.dialog.popupClose,
-        '[data-qa="modal-close"]',
-        '[data-qa$="-cancel"]',
-        '[data-qa$="-abort"]',
-        '[data-qa$="-close"]',
-        '[aria-label="Закрыть"]',
-        '[aria-label="Close"]',
-      ].join(", "),
-    )
-    .first();
-
-  const byText = dialog
-    .locator('button, a[role="button"]')
-    .filter({ hasText: /^\s*(отмен|закрыть|понятно|не сейчас|позже)/i })
-    .first();
-
-  const closer = (await byQa.isVisible().catch(() => false))
-    ? byQa
-    : (await byText.isVisible().catch(() => false))
-      ? byText
-      : null;
+  // Крестик hh часто рисует рядом с role="dialog", а не внутри — поэтому
+  // ищем ещё и в родителе окна.
+  const scopes = [dialog, dialog.locator("xpath=..")];
+  let closer: Locator | null = null;
+  for (const scope of scopes) {
+    const byQa = scope.locator(CLOSE_SELECTORS).first();
+    const byText = scope
+      .locator('button, a[role="button"]')
+      .filter({ hasText: /^\s*(отмен|закрыть|понятно|не сейчас|позже)/i })
+      .first();
+    if (await byQa.isVisible().catch(() => false)) closer = byQa;
+    else if (await byText.isVisible().catch(() => false)) closer = byText;
+    if (closer) break;
+  }
 
   if (closer) {
     await bestEffort("клик по кнопке закрытия не прошёл", () => closer.click());
@@ -99,6 +123,7 @@ async function closeAnyDialog(
   // Escape такие окна не закрывает — если модалка на месте, перезагружаем выдачу.
   if (!closed && (await dialog.isVisible().catch(() => false))) {
     console.warn(`⚠️ модалка не закрылась, перезагружаю выдачу: "${text.slice(0, 60)}"`);
+    console.warn(`⚠️ кнопки модалки: ${await describeButtons(dialog.locator("xpath=.."))}`);
     await bestEffort("не удалось перезагрузить выдачу", () =>
       openPage(page, serpUrl),
     );

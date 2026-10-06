@@ -345,9 +345,10 @@ async function dumpPage(page: Page, name: string): Promise<string | null> {
   }
 }
 
-// Тяжёлое, без чего отклики работают: картинки, видео, шрифты.
-// На слабом VPS их отрисовка в окне съедает больше всего времени.
-const HEAVY_RESOURCES = new Set(["image", "media", "font"]);
+// Для откликов картинки не нужны, а на слабом VPS их декодирование отнимает
+// процессор. Отключаем флагом, а не через ctx.route: перехват запросов
+// выключает HTTP-кэш, и после каждого «назад» весь JS hh качался бы заново.
+const NO_IMAGES = ["--blink-settings=imagesEnabled=false"];
 
 interface Session {
   browser: Browser;
@@ -355,8 +356,10 @@ interface Session {
   page: Page;
 }
 
-async function openSession(headless: boolean, state?: StorageState): Promise<Session> {
-  const browser = await chromium.launch({ headless });
+// forLogin — во время входа нужна картинка капчи, остальное время картинки не грузим
+async function openSession(forLogin: boolean, state?: StorageState): Promise<Session> {
+  const headless = forLogin ? config.headless : true;
+  const browser = await chromium.launch({ headless, args: forLogin ? [] : NO_IMAGES });
   const ctx = await browser.newContext(state ? { storageState: state } : {});
   return { browser, ctx, page: await ctx.newPage() };
 }
@@ -385,8 +388,8 @@ export async function runBot(
   // STOP: закрытие браузера прерывает любое ожидание Playwright
   const onAbort = () => void persist().finally(close);
   signal.addEventListener("abort", onAbort, { once: true });
-  const opened = async (headless: boolean, state?: StorageState) => {
-    session = await openSession(headless, state);
+  const opened = async (forLogin: boolean, state?: StorageState) => {
+    session = await openSession(forLogin, state);
     if (signal.aborted) await close(); // STOP пришёл, пока браузер запускался
     if (!session) throw new Error("run stopped");
     return session;
@@ -398,7 +401,7 @@ export async function runBot(
     // Сохранённая сессия расшифруется только с тем же паролем или ключом устройства.
     const stored = await loadSession({ login: run.login, secret: run.sessionSecret });
     if (stored) {
-      const { page } = await opened(true, stored);
+      const { page } = await opened(false, stored);
       reporter.stage("opening hh.ru");
       await openPage(page, URLS.home);
       loggedIn = await isLoggedIn(page);
@@ -411,7 +414,7 @@ export async function runBot(
     }
 
     if (!loggedIn) {
-      const { page, ctx } = await opened(config.headless);
+      const { page, ctx } = await opened(true);
       reporter.stage("opening hh.ru");
       await openPage(page, URLS.home);
       reporter.stage("logging in");
@@ -429,17 +432,13 @@ export async function runBot(
         throw error;
       }
       await persist();
-      if (!config.headless) {
-        const state = await ctx.storageState();
-        await close();
-        await opened(true, state);
-      }
+      // перезапуск без окна и без картинок — дальше они только тормозят
+      const state = await ctx.storageState();
+      await close();
+      await opened(false, state);
     }
 
-    const { page, ctx } = session!;
-    await ctx.route("**/*", (route) =>
-      HEAVY_RESOURCES.has(route.request().resourceType()) ? route.abort() : route.fallback(),
-    );
+    const { page } = session!;
 
     reporter.stage("opening search");
     const serpUrl = await openSearch(page, run);
